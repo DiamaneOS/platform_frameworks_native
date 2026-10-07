@@ -22,7 +22,7 @@ namespace android {
 
 SwitchInputMapper::SwitchInputMapper(InputDeviceContext& deviceContext,
                                      const InputReaderConfiguration& readerConfig)
-      : InputMapper(deviceContext, readerConfig), mSwitchValues(0), mUpdatedSwitchMask(0) {}
+      : InputMapper(deviceContext, readerConfig), mSwitchValues(0), mUpdatedSwitchMask(0), mSynced(false) {}
 
 SwitchInputMapper::~SwitchInputMapper() {}
 
@@ -42,6 +42,35 @@ std::list<NotifyArgs> SwitchInputMapper::process(const RawEvent& rawEvent) {
                 out += sync(rawEvent.when);
             }
     }
+    return out;
+}
+
+// Takes the switches' state from the device. The reader resets a device after it recovers
+// from a buffer overrun (SYN_DROPPED) and drops the events of that frame, so a switch that
+// moved then is reported here. Otherwise its change would be lost until it moved again. The
+// first reset only takes the state, as the device has just been added.
+std::list<NotifyArgs> SwitchInputMapper::reset(nsecs_t when) {
+    std::list<NotifyArgs> out = InputMapper::reset(when);
+    uint32_t values = 0;
+    uint32_t known = 0;
+    for (int32_t code = 0; code < 32; code++) {
+        const int32_t state = getDeviceContext().getSwitchState(code);
+        if (state == AKEY_STATE_UNKNOWN) {
+            continue;
+        }
+        known |= 1u << code;
+        if (state != AKEY_STATE_UP) {
+            values |= 1u << code;
+        }
+    }
+    const uint32_t changed = (values ^ mSwitchValues) & known;
+    if (mSynced && changed != 0) {
+        out.push_back(NotifySwitchArgs(getContext()->getNextId(), when, /*policyFlags=*/0,
+                                       values & changed, changed));
+    }
+    mSwitchValues = (mSwitchValues & ~known) | values;
+    mUpdatedSwitchMask = 0;
+    mSynced = true;
     return out;
 }
 
