@@ -69,4 +69,31 @@ TEST_F(SwitchInputMapperTest, Process) {
                   WithPolicyFlags(0U)));
 }
 
+TEST_F(SwitchInputMapperTest, ResetReportsSwitchesChangedWhileEventsWereDropped) {
+    // The mapper was created (and first reset) with every switch off: nothing is reported.
+    mFakeListener.assertNoEvents();
+
+    // The reader drops a frame after SYN_DROPPED and then resets the device.
+    setSwitchState(1, {SW_PEN_INSERTED});
+    processArgs(mMapper->reset(ARBITRARY_TIME));
+    mFakeListener.expectSwitchEvent(AllOf(WithEventTime(ARBITRARY_TIME),
+                                          WithSwitchValues(1U << SW_PEN_INSERTED),
+                                          WithSwitchMask(1U << SW_PEN_INSERTED)));
+
+    // Another reset with no change reports nothing.
+    processArgs(mMapper->reset(ARBITRARY_TIME));
+    mFakeListener.assertNoEvents();
+}
+
+TEST_F(SwitchInputMapperTest, FirstResetOnlyTakesTheState) {
+    setSwitchState(1, {SW_PEN_INSERTED});
+    std::unique_ptr<SwitchInputMapper> mapper =
+            createInputMapper<SwitchInputMapper>(*mDeviceContext,
+                                                 mFakePolicy->getReaderConfiguration());
+
+    // Created with the switch on: the next reset reports nothing.
+    processArgs(mapper->reset(ARBITRARY_TIME));
+    mFakeListener.assertNoEvents();
+}
+
 } // namespace android

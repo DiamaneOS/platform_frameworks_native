@@ -30,6 +30,7 @@ public:
 
     virtual uint32_t getSources() const override;
     [[nodiscard]] std::list<NotifyArgs> process(const RawEvent& rawEvent) override;
+    [[nodiscard]] std::list<NotifyArgs> reset(nsecs_t when) override;
 
     virtual int32_t getSwitchState(uint32_t sourceMask, int32_t switchCode) override;
     virtual void dump(std::string& dump) override;
@@ -37,6 +38,8 @@ public:
 private:
     uint32_t mSwitchValues;
     uint32_t mUpdatedSwitchMask;
+    // Whether mSwitchValues has been read from the device at least once.
+    bool mSynced;
 
     explicit SwitchInputMapper(InputDeviceContext& deviceContext,
                                const InputReaderConfiguration& readerConfig);
