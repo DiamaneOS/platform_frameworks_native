@@ -47,7 +47,7 @@ std::list<NotifyArgs> SwitchInputMapper::process(const RawEvent& rawEvent) {
 
 // Takes the switches' state from the device. The reader resets a device after it recovers
 // from a buffer overrun (SYN_DROPPED) and drops the events of that frame, so a switch that
-// moved then is reported here; otherwise its change would be lost until it moved again. The
+// moved then is reported here. Otherwise its change would be lost until it moved again. The
 // first reset only takes the state, as the device has just been added.
 std::list<NotifyArgs> SwitchInputMapper::reset(nsecs_t when) {
     std::list<NotifyArgs> out = InputMapper::reset(when);
